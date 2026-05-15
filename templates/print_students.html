@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Изменения для обучающихся — {{ date_display }}</title>
+  <link rel="stylesheet" href="{{ css_url }}">
+</head>
+<body class="page-print print-students">
+  <div id="print-area" class="print-sheet print-students">
+    <div class="print-head">
+      <div class="print-head-left">
+        <div class="print-badge">Для обучающихся</div>
+        <h1 class="print-title">Изменения в расписании</h1>
+        <p class="print-subtitle">{{ date_display }}</p>
+      </div>
+    </div>
+
+    <h2 class="shift-head">1 смена</h2>
+    <table class="print-table print-table-students">
+      <thead>
+        <tr>
+          <th>Класс</th>
+          <th>№ урока</th>
+          <th>Урок</th>
+          <th>Кабинет</th>
+          <th>Примечание</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows_shift1 %}
+        <tr>
+          <td>{{ row.klass }}</td>
+          <td class="num">{{ row.lesson_no }}</td>
+          <td>{{ row.subject }}</td>
+          <td>{{ row.room }}</td>
+          <td>{{ row.note }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty">Нет изменений для отображения</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2 class="shift-head shift2">2 смена</h2>
+    <table class="print-table print-table-students">
+      <thead>
+        <tr>
+          <th>Класс</th>
+          <th>№ урока</th>
+          <th>Урок</th>
+          <th>Кабинет</th>
+          <th>Примечание</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows_shift2 %}
+        <tr>
+          <td>{{ row.klass }}</td>
+          <td class="num">{{ row.lesson_no }}</td>
+          <td>{{ row.subject }}</td>
+          <td>{{ row.room }}</td>
+          <td>{{ row.note }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty">Нет изменений для отображения</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

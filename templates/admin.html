@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Справочники{% endblock %}
+{% block body_class %}page-app{% endblock %}
+{% block body %}
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">DB</span>
+    <div>
+      <div class="brand-title">Справочники</div>
+      <div class="brand-sub">Учителя, классы, предметы</div>
+    </div>
+  </div>
+  <nav class="nav">
+    <a href="{{ url_for('index') }}">← Назад к вводу</a>
+  </nav>
+</header>
+
+<main class="container">
+  <section class="card">
+    <h1>Первичная загрузка</h1>
+    <p class="hint">
+      Загрузите XML-файлы один раз (классы и предметы/нагрузка). Данные сохраняются в локальной базе
+      и используются дальше автоматически, пока вы сами не обновите справочники.
+    </p>
+  </section>
+
+  <section class="card">
+    <h1>Учителя</h1>
+    <form id="form-teacher" class="row gap wrap">
+      <input type="text" name="fio" placeholder="ФИО" required class="grow">
+      <button type="submit" class="btn primary">Добавить</button>
+    </form>
+    <form class="import-form" action="{{ url_for('import_teachers') }}" method="post" enctype="multipart/form-data">
+      <p class="import-hint">Импорт CSV/XLSX/XML — первый столбец: ФИО</p>
+      <div class="import-actions">
+        <label class="btn file-import-btn">
+          <input type="file" name="file" class="file-input-overlay" accept=".csv,.xlsx,.xls,.xml">
+          <span>Выбрать файл</span>
+        </label>
+        <button type="submit" class="btn primary">Загрузить</button>
+      </div>
+      <span class="file-name-preview"></span>
+    </form>
+    <ul class="list-admin" id="list-teachers"></ul>
+  </section>
+
+  <section class="card">
+    <h1>Классы</h1>
+    <form id="form-class" class="row gap wrap">
+      <input type="text" name="name" placeholder="Название класса (10А)" required class="grow">
+      <label class="field shrink">
+        <span>Смена</span>
+        <select name="shift">
+          <option value="1">1 смена (уроки 0–7)</option>
+          <option value="2">2 смена (уроки −1–6)</option>
+        </select>
+      </label>
+      <button type="submit" class="btn primary">Добавить</button>
+    </form>
+    <form class="import-form" action="{{ url_for('import_classes') }}" method="post" enctype="multipart/form-data">
+      <p class="import-hint">Импорт CSV/XLSX/XML — колонка 1: класс; для XML смена определяется автоматически</p>
+      <div class="import-actions">
+        <label class="btn file-import-btn">
+          <input type="file" name="file" class="file-input-overlay" accept=".csv,.xlsx,.xls,.xml">
+          <span>Выбрать файл</span>
+        </label>
+        <button type="submit" class="btn primary">Загрузить</button>
+      </div>
+      <span class="file-name-preview"></span>
+    </form>
+    <ul class="list-admin" id="list-classes"></ul>
+  </section>
+
+  <section class="card">
+    <h1>Предметы</h1>
+    <form id="form-subject" class="row gap wrap">
+      <input type="text" name="name" placeholder="Название предмета" required class="grow">
+      <button type="submit" class="btn primary">Добавить</button>
+    </form>
+    <form class="import-form" action="{{ url_for('import_subjects') }}" method="post" enctype="multipart/form-data">
+      <p class="import-hint">Импорт XML/CSV/XLSX — колонка «Предмет» (например, «нагр ПРЕДМЕТЫ.xml»)</p>
+      <div class="import-actions">
+        <label class="btn file-import-btn">
+          <input type="file" name="file" class="file-input-overlay" accept=".csv,.xlsx,.xls,.xml">
+          <span>Выбрать файл</span>
+        </label>
+        <button type="submit" class="btn primary">Загрузить</button>
+      </div>
+      <span class="file-name-preview"></span>
+    </form>
+    <ul class="list-admin" id="list-subjects"></ul>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+async function api(path, opts) {
+  const r = await fetch(path, Object.assign({ headers: { 'Accept': 'application/json' } }, opts));
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || r.statusText);
+  }
+  if (r.status === 204) return null;
+  return r.json();
+}
+
+async function refresh() {
+  const ref = await api('/api/reference');
+  const ulT = document.getElementById('list-teachers');
+  const ulC = document.getElementById('list-classes');
+  const ulS = document.getElementById('list-subjects');
+  ulT.innerHTML = '';
+  ulC.innerHTML = '';
+  ulS.innerHTML = '';
+  ref.teachers.forEach(t => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${escapeHtml(t.fio)}</span><button type="button" data-del-t="${t.id}">Удалить</button>`;
+    ulT.appendChild(li);
+  });
+  ref.classes.forEach(c => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${escapeHtml(c.name)} — смена ${c.shift}</span><button type="button" data-del-c="${c.id}">Удалить</button>`;
+    ulC.appendChild(li);
+  });
+  ref.subjects.forEach(s => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${escapeHtml(s.name)}</span><button type="button" data-del-s="${s.id}">Удалить</button>`;
+    ulS.appendChild(li);
+  });
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+document.getElementById('form-teacher').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const fio = fd.get('fio');
+  await api('/api/teachers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fio }) });
+  e.target.reset();
+  await refresh();
+});
+
+document.getElementById('form-class').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  await api('/api/classes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: fd.get('name'), shift: parseInt(fd.get('shift'), 10) }),
+  });
+  e.target.reset();
+  await refresh();
+});
+
+document.getElementById('form-subject').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const name = fd.get('name');
+  await api('/api/subjects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  e.target.reset();
+  await refresh();
+});
+
+document.getElementById('list-teachers').addEventListener('click', async (e) => {
+  const id = e.target.getAttribute('data-del-t');
+  if (!id) return;
+  if (!confirm('Удалить учителя?')) return;
+  await api('/api/teachers/' + id, { method: 'DELETE' });
+  await refresh();
+});
+
+document.getElementById('list-classes').addEventListener('click', async (e) => {
+  const id = e.target.getAttribute('data-del-c');
+  if (!id) return;
+  if (!confirm('Удалить класс?')) return;
+  await api('/api/classes/' + id, { method: 'DELETE' });
+  await refresh();
+});
+
+document.getElementById('list-subjects').addEventListener('click', async (e) => {
+  const id = e.target.getAttribute('data-del-s');
+  if (!id) return;
+  if (!confirm('Удалить предмет?')) return;
+  await api('/api/subjects/' + id, { method: 'DELETE' });
+  await refresh();
+});
+
+refresh().catch(err => alert(err.message));
+
+document.querySelectorAll('.import-form .file-input-overlay').forEach((inp) => {
+  inp.addEventListener('change', () => {
+    const form = inp.closest('.import-form');
+    const prev = form && form.querySelector('.file-name-preview');
+    if (prev) prev.textContent = (inp.files && inp.files[0]) ? inp.files[0].name : '';
+  });
+});
+</script>
+{% endblock %}

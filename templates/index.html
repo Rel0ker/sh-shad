@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Ввод изменений — расписание{% endblock %}
+{% block body_class %}page-app{% endblock %}
+{% block body %}
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">RE</span>
+    <div>
+      <div class="brand-title">Изменения в расписании</div>
+    </div>
+  </div>
+  <nav class="nav">
+    <a href="{{ url_for('admin_page') }}">Справочники</a>
+  </nav>
+</header>
+
+<main class="container">
+  <section class="card hero-card">
+    <h1>День изменений</h1>
+    <div class="date-bar">
+      <label class="field date-field">
+        <span>Дата</span>
+        <div class="date-input-shell">
+          <input type="date" id="change-date" class="input-date" value="{{ default_date }}">
+        </div>
+      </label>
+      <div class="actions">
+        <button type="button" id="btn-save" class="btn primary">Сохранить</button>
+        <button type="button" id="btn-add-row" class="btn">+ Строка</button>
+      </div>
+    </div>
+    <p class="hint">№ урока: <strong>0–7</strong> для 1 смены, <strong>−1–6</strong> для 2 смены (по справочнику класса).</p>
+    <p class="hint">Подсказки по классам, учителям и предметам берутся из справочников (загружаются один раз и хранятся в базе).</p>
+  </section>
+
+  <section class="card">
+    <h2>Таблица изменений</h2>
+    <div class="table-wrap">
+      <table class="edit-table" id="changes-table">
+        <thead>
+          <tr>
+            <th>Класс</th>
+            <th>№ урока</th>
+            <th>Отсутствующий учитель</th>
+            <th>Заменяющий учитель</th>
+            <th>Предмет (для учеников)</th>
+            <th>Кабинет</th>
+            <th>Примечание</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="changes-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Экспорт</h2>
+    <div class="export-grid">
+      <a class="btn" id="exp-pdf-t" href="#" target="_blank">PDF — учителя</a>
+      <a class="btn" id="exp-pdf-s" href="#" target="_blank">PDF — ученики</a>
+      <a class="btn" id="exp-png-t" href="#" target="_blank">PNG — учителя</a>
+      <a class="btn" id="exp-png-s" href="#" target="_blank">PNG — ученики</a>
+    </div>
+    <p class="hint">Сначала сохраните день. PNG/PDF открываются в новой вкладке или скачиваются.</p>
+
+    <h3 class="export-sub">Приказ об оплате часов (шаблон школы)</h3>
+    <div class="date-bar prikaz-row">
+      <label class="field date-field shrink">
+        <span>Период с</span>
+        <div class="date-input-shell">
+          <input type="date" id="prikaz-from" class="input-date">
+        </div>
+      </label>
+      <label class="field date-field shrink">
+        <span>по</span>
+        <div class="date-input-shell">
+          <input type="date" id="prikaz-to" class="input-date">
+        </div>
+      </label>
+      <label class="field date-field shrink">
+        <span>Дата приказа</span>
+        <div class="date-input-shell">
+          <input type="date" id="prikaz-order-date" class="input-date">
+        </div>
+      </label>
+      <a class="btn primary" id="exp-xlsx-prikaz" href="#" target="_blank">XLSX — приказ ЗП</a>
+    </div>
+  </section>
+</main>
+
+<datalist id="dl-classes"></datalist>
+<datalist id="dl-teachers"></datalist>
+<datalist id="dl-subjects"></datalist>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Замещение учителей — {{ date_display }}</title>
+  <link rel="stylesheet" href="{{ css_url }}">
+</head>
+<body class="page-print print-teachers">
+  <div id="print-area" class="print-sheet">
+    <div class="print-head">
+      <div class="print-head-left">
+        <div class="print-badge">Для учителей</div>
+        <h1 class="print-title">Изменения в расписании</h1>
+        <p class="print-subtitle">{{ date_display }}</p>
+      </div>
+    </div>
+    <table class="print-table print-table-teachers">
+      <thead>
+        <tr>
+          <th>Класс</th>
+          <th>№ урока</th>
+          <th>Отсутствующий учитель</th>
+          <th>Заменяющий учитель</th>
+          <th>Кабинет</th>
+          <th>Примечание</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ row.klass }}</td>
+          <td class="num">{{ row.lesson_no }}</td>
+          <td>{{ row.absent_fio }}</td>
+          <td>{{ row.replacement_fio or "—" }}</td>
+          <td>{{ row.room or "—" }}</td>
+          <td>{{ row.note }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty">Нет данных на этот день</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
