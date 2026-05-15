@@ -5,11 +5,10 @@
 ## Требования
 
 - Python **3.11+**
-- Для PNG: после установки зависимостей один раз выполните:
-  ```bash
-  playwright install chromium
-  ```
-- Для PDF: приложение **сначала** пробует **WeasyPrint** (если в системе есть Pango/GTK). Если WeasyPrint недоступен (часто на macOS без Homebrew-библиотек или в «чистом» Windows), PDF строится через **тот же Chromium**, что и для PNG (**Playwright**). Поэтому `playwright install chromium` обязателен для стабильной генерации PDF.
+- **Excel (XLSX)** — основной экспорт для печати и рассылки; работает везде, без браузера.
+- **PDF/PNG** (опционально): нужен [Playwright](https://playwright.dev/python/) и Chromium:
+  - Windows: `install_playwright_windows.bat`
+  - macOS/Linux: `pip install -r requirements-pdf.txt` и `playwright install chromium`
 
 ## Запуск из исходников
 
@@ -18,8 +17,9 @@ cd "путь/к/проекту"
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-playwright install chromium
 python app.py
+# PDF/PNG по желанию:
+# pip install -r requirements-pdf.txt && playwright install chromium
 ```
 
 Откроется браузер. База данных `app.db` создаётся рядом с проектом (рядом с `app.py`).
@@ -40,7 +40,12 @@ python app.py
 
 Эти файлы обычно загружают **один раз**: данные сохраняются в `app.db` и остаются до следующего обновления расписания.
 
-## Экспорт Excel
+## Экспорт
+
+- **Excel — учителя / ученики** — таблицы как на печати (openpyxl, без Playwright). Удобно на Windows: открыть в Excel и напечатать или отправить в чат.
+- **PDF / PNG** — нужен Chromium (см. выше). Если не ставится — используйте Excel.
+
+### Приказ и учёт
 
 - **Приказ ЗП** (`XLSX — приказ ЗП`): заполняется шаблон школы [`data/templates/zameny_zp_template.xlsx`](data/templates/zameny_zp_template.xlsx) — шапка и оформление как в оригинале; в таблицу подставляются строки за выбранный период. **Одна строка на пару** «заменяющий + отсутствующий»: колонка «Ф. И. О, учителя» — заменяющий (кто получает оплату), «Ф. И. О. замещаемого» — отсутствующий; **часы** = число сохранённых уроков по этой паре; **даты** — все дни замен; **причина** — по наиболее частому тексту из «Примечание» (если пусто — «Приказ»; при равной частоте вариантов — через `; `). Строки **без заменяющего или без отсутствующего** в приказ не попадают. Дата дня (`day_date`) нормализуется из БД (строка / `date` / `datetime`).
 
@@ -48,17 +53,13 @@ python app.py
 
 ## Сборка `.exe` (Windows)
 
-На машине с Windows (или кросс-сборка не рекомендуется для Playwright):
+Дважды щёлкните **`build_windows.bat`** (или в cmd из папки проекта). Сборка **не требует** Playwright — сразу работает **Excel**.
 
-```bat
-pip install -r requirements.txt
-playwright install chromium
-pyinstaller build.spec
-```
+Готовый файл: `dist/schedule_changes.exe`. База `app.db` создаётся рядом с exe.
 
-Готовый файл: `dist/schedule_changes.exe`. Рядом с `.exe` появится `app.db` после первого запуска.
+Для PDF/PNG на том же ПК после сборки: **`install_playwright_windows.bat`** (нужен интернет, ~150 МБ Chromium).
 
-**Playwright:** браузер Chromium занимает место на диске; при переносе `.exe` на другой ПК на целевой машине один раз выполните `playwright install chromium` в окружении Python, из которого собирали, или положите кэш браузера Playwright (см. [документацию Playwright](https://playwright.dev/python/docs/browsers)).
+Если `playwright install` падает: антивирус, прокси, нет сети — пользуйтесь **Excel — учителя / ученики** и печатью из Excel.
 
 ## Структура
 

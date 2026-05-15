@@ -1,0 +1,6 @@
+# Опционально: PDF/PNG через Chromium (на Windows часто ставится отдельным bat-файлом)
+-r requirements.txt
+playwright>=1.40.0
+
+# WeasyPrint — только если в системе есть GTK/Pango (чаще Linux/macOS с Homebrew)
+# weasyprint>=62.0

@@ -408,6 +408,39 @@ def create_app() -> Flask:
             css_url=_css_url(),
         )
 
+    def _export_error_response(exc: BaseException) -> Response:
+        return Response(str(exc), status=503, mimetype="text/plain; charset=utf-8")
+
+    @app.get("/export/xlsx/teachers")
+    def export_xlsx_teachers() -> Any:
+        d = request.args.get("date") or db.today_iso()
+        date.fromisoformat(d)
+        rows = build_teacher_rows(_changes_for_date(d))
+        data = gen_xlsx.build_teachers_print_workbook(format_date_ru(d), rows)
+        return send_file(
+            io.BytesIO(data),
+            mimetype=(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            ),
+            as_attachment=True,
+            download_name=f"замещение_учителей_{d}.xlsx",
+        )
+
+    @app.get("/export/xlsx/students")
+    def export_xlsx_students() -> Any:
+        d = request.args.get("date") or db.today_iso()
+        date.fromisoformat(d)
+        s1, s2 = build_student_rows(_changes_for_date(d))
+        data = gen_xlsx.build_students_print_workbook(format_date_ru(d), s1, s2)
+        return send_file(
+            io.BytesIO(data),
+            mimetype=(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            ),
+            as_attachment=True,
+            download_name=f"изменения_ученики_{d}.xlsx",
+        )
+
     @app.get("/export/pdf/teachers")
     def export_pdf_teachers() -> Any:
         d = request.args.get("date") or db.today_iso()
@@ -420,14 +453,17 @@ def create_app() -> Flask:
         }
         base = request.host_url.rstrip("/")
         fb = f"{base}{url_for('print_teachers')}?date={d}"
-        data = gen_pdf.render_pdf_bytes(
-            app,
-            "print_teachers.html",
-            ctx,
-            fallback_url=fb,
-            fallback_landscape=True,
-            fallback_margin_mm=6,
-        )
+        try:
+            data = gen_pdf.render_pdf_bytes(
+                app,
+                "print_teachers.html",
+                ctx,
+                fallback_url=fb,
+                fallback_landscape=True,
+                fallback_margin_mm=6,
+            )
+        except Exception as e:
+            return _export_error_response(e)
         return send_file(
             io.BytesIO(data),
             mimetype="application/pdf",
@@ -448,14 +484,17 @@ def create_app() -> Flask:
         }
         base = request.host_url.rstrip("/")
         fb = f"{base}{url_for('print_students')}?date={d}"
-        data = gen_pdf.render_pdf_bytes(
-            app,
-            "print_students.html",
-            ctx,
-            fallback_url=fb,
-            fallback_landscape=False,
-            fallback_margin_mm=8,
-        )
+        try:
+            data = gen_pdf.render_pdf_bytes(
+                app,
+                "print_students.html",
+                ctx,
+                fallback_url=fb,
+                fallback_landscape=False,
+                fallback_margin_mm=8,
+            )
+        except Exception as e:
+            return _export_error_response(e)
         return send_file(
             io.BytesIO(data),
             mimetype="application/pdf",
@@ -472,12 +511,7 @@ def create_app() -> Flask:
         try:
             png = gen_png.screenshot_element(url)
         except Exception as e:
-            msg = (
-                "Не удалось сгенерировать PNG. Выполните в терминале:\n"
-                "  playwright install chromium\n\n"
-                + str(e)
-            )
-            return Response(msg, status=503, mimetype="text/plain; charset=utf-8")
+            return _export_error_response(e)
         return send_file(
             io.BytesIO(png),
             mimetype="image/png",
@@ -494,12 +528,7 @@ def create_app() -> Flask:
         try:
             png = gen_png.screenshot_element(url)
         except Exception as e:
-            msg = (
-                "Не удалось сгенерировать PNG. Выполните в терминале:\n"
-                "  playwright install chromium\n\n"
-                + str(e)
-            )
-            return Response(msg, status=503, mimetype="text/plain; charset=utf-8")
+            return _export_error_response(e)
         return send_file(
             io.BytesIO(png),
             mimetype="image/png",

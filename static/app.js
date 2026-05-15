@@ -31,6 +31,8 @@ function syncPrikazDatesFromChangeDate() {
 function updateExportLinks() {
   const d = encodeURIComponent(currentDate());
   const base = '';
+  document.getElementById('exp-xlsx-t').href = `${base}/export/xlsx/teachers?date=${d}`;
+  document.getElementById('exp-xlsx-s').href = `${base}/export/xlsx/students?date=${d}`;
   document.getElementById('exp-pdf-t').href = `${base}/export/pdf/teachers?date=${d}`;
   document.getElementById('exp-pdf-s').href = `${base}/export/pdf/students?date=${d}`;
   document.getElementById('exp-png-t').href = `${base}/export/png/teachers?date=${d}`;

@@ -15,7 +15,7 @@ a = Analysis(
         (str(root / "static"), "static"),
         (str(root / "data"), "data"),
     ],
-    hiddenimports=["playwright.sync_api", "weasyprint"],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

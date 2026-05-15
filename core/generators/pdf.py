@@ -1,4 +1,4 @@
-"""HTML → PDF: WeasyPrint при наличии системных библиотек, иначе Playwright (Chromium)."""
+"""HTML → PDF: WeasyPrint при наличии библиотек, иначе Playwright (Chromium)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from flask import Flask
-from playwright.sync_api import sync_playwright
+
+from core.generators.browser_export import ensure_playwright, playwright_runtime_error
 
 
 def _pdf_weasyprint(app: Flask, template_name: str, context: dict[str, Any]) -> bytes:
@@ -24,27 +25,37 @@ def render_pdf_via_playwright(
     landscape: bool = False,
     margin_mm: int = 8,
 ) -> bytes:
-    """Надёжный вариант для .exe и macOS без GTK/Pango."""
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        try:
-            page = browser.new_page()
-            page.goto(url, wait_until="networkidle", timeout=60000)
-            page.wait_for_selector("#print-area", timeout=30000)
-            return page.pdf(
-                print_background=True,
-                format="A4",
-                landscape=landscape,
-                prefer_css_page_size=True,
-                margin={
-                    "top": f"{margin_mm}mm",
-                    "bottom": f"{margin_mm}mm",
-                    "left": f"{margin_mm}mm",
-                    "right": f"{margin_mm}mm",
-                },
-            )
-        finally:
-            browser.close()
+    ensure_playwright()
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as e:
+        from core.generators.browser_export import playwright_missing_message
+
+        raise RuntimeError(playwright_missing_message()) from e
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            try:
+                page = browser.new_page()
+                page.goto(url, wait_until="networkidle", timeout=60000)
+                page.wait_for_selector("#print-area", timeout=30000)
+                return page.pdf(
+                    print_background=True,
+                    format="A4",
+                    landscape=landscape,
+                    prefer_css_page_size=True,
+                    margin={
+                        "top": f"{margin_mm}mm",
+                        "bottom": f"{margin_mm}mm",
+                        "left": f"{margin_mm}mm",
+                        "right": f"{margin_mm}mm",
+                    },
+                )
+            finally:
+                browser.close()
+    except Exception as e:
+        raise playwright_runtime_error(e) from e
 
 
 def render_pdf_bytes(
@@ -57,8 +68,8 @@ def render_pdf_bytes(
     fallback_margin_mm: int = 8,
 ) -> bytes:
     """
-    Сначала пробуем WeasyPrint (как в плане). Если библиотека недоступна или ошибка —
-    при переданном ``fallback_url`` печатаем через Chromium.
+    Сначала WeasyPrint (если установлен). Иначе — Chromium через Playwright.
+    Если ничего нет — понятная ошибка (рекомендуется Excel).
     """
     try:
         return _pdf_weasyprint(app, template_name, context)
@@ -69,4 +80,6 @@ def render_pdf_bytes(
                 landscape=fallback_landscape,
                 margin_mm=fallback_margin_mm,
             )
-        raise
+        from core.generators.browser_export import playwright_missing_message
+
+        raise RuntimeError(playwright_missing_message()) from None
