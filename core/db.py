@@ -231,6 +231,57 @@ def upsert_teachers(fios: Iterable[str]) -> int:
     return inserted
 
 
+def upsert_classes_from_rows(rows: Iterable[dict[str, Any]]) -> int:
+    """Новые классы из ввода — в справочник (смена 1 по умолчанию)."""
+    inserted = 0
+    with get_connection() as conn:
+        for r in rows:
+            name = (r.get("klass") or "").strip()
+            if not name:
+                continue
+            exists = conn.execute(
+                "SELECT id FROM classes WHERE name = ? COLLATE NOCASE",
+                (name,),
+            ).fetchone()
+            if exists:
+                continue
+            shift = 1
+            cid = r.get("class_id")
+            if cid is not None:
+                row = conn.execute(
+                    "SELECT shift FROM classes WHERE id = ?", (int(cid),)
+                ).fetchone()
+                if row:
+                    shift = int(row["shift"])
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO classes (name, shift) VALUES (?, ?)",
+                (name, shift),
+            )
+            if cur.rowcount:
+                inserted += 1
+    return inserted
+
+
+def remember_from_change_rows(rows: Iterable[dict[str, Any]]) -> dict[str, int]:
+    """Сохранить в справочники всё, что ввели в таблице (учителя, предметы, классы)."""
+    teachers: set[str] = set()
+    subjects: set[str] = set()
+    row_list = list(rows)
+    for r in row_list:
+        for key in ("absent_fio", "replacement_fio"):
+            f = (r.get(key) or "").strip()
+            if f:
+                teachers.add(f)
+        subj = (r.get("subject") or "").strip()
+        if subj:
+            subjects.add(subj)
+    return {
+        "teachers": upsert_teachers(teachers),
+        "subjects": upsert_subjects(subjects),
+        "classes": upsert_classes_from_rows(row_list),
+    }
+
+
 def get_or_create_day(d: str) -> int:
     """d — YYYY-MM-DD. Возвращает id change_days."""
     with get_connection() as conn:

@@ -1,5 +1,5 @@
 /**
- * Главный экран: справочники, строки изменений, сохранение, ссылки экспорта.
+ * Главный экран: начальная (1–4) и основная (5–11) школа, сохранение, экспорт.
  */
 
 let reference = { teachers: [], classes: [], subjects: [] };
@@ -15,6 +15,15 @@ function toYMD(d) {
   return `${y}-${m}-${day}`;
 }
 
+/** Классы 1–4 — начальная школа (как в core/class_levels.py). */
+function isElementaryClass(name) {
+  const s = (name || '').trim().replace(/\s/g, '');
+  const m = s.match(/^(\d{1,2})/);
+  if (!m) return false;
+  const g = parseInt(m[1], 10);
+  return g >= 1 && g <= 4;
+}
+
 function syncPrikazDatesFromChangeDate() {
   const raw = currentDate();
   if (!raw) return;
@@ -28,15 +37,31 @@ function syncPrikazDatesFromChangeDate() {
   if (ordEl && !ordEl.dataset.touched) ordEl.value = toYMD(new Date());
 }
 
+function setExportLink(id, path) {
+  const el = document.getElementById(id);
+  if (el) el.href = path;
+}
+
 function updateExportLinks() {
   const d = encodeURIComponent(currentDate());
   const base = '';
-  document.getElementById('exp-xlsx-t').href = `${base}/export/xlsx/teachers?date=${d}`;
-  document.getElementById('exp-xlsx-s').href = `${base}/export/xlsx/students?date=${d}`;
-  document.getElementById('exp-pdf-t').href = `${base}/export/pdf/teachers?date=${d}`;
-  document.getElementById('exp-pdf-s').href = `${base}/export/pdf/students?date=${d}`;
-  document.getElementById('exp-png-t').href = `${base}/export/png/teachers?date=${d}`;
-  document.getElementById('exp-png-s').href = `${base}/export/png/students?date=${d}`;
+  const elem = `${base}/export`;
+  const main = `${base}/export`;
+
+  setExportLink('exp-xlsx-t-elem', `${elem}/xlsx/teachers/elementary?date=${d}`);
+  setExportLink('exp-xlsx-s-elem', `${elem}/xlsx/students/elementary?date=${d}`);
+  setExportLink('exp-pdf-t-elem', `${elem}/pdf/teachers/elementary?date=${d}`);
+  setExportLink('exp-pdf-s-elem', `${elem}/pdf/students/elementary?date=${d}`);
+  setExportLink('exp-png-t-elem', `${elem}/png/teachers/elementary?date=${d}`);
+  setExportLink('exp-png-s-elem', `${elem}/png/students/elementary?date=${d}`);
+
+  setExportLink('exp-xlsx-t-main', `${main}/xlsx/teachers?date=${d}`);
+  setExportLink('exp-xlsx-s-main', `${main}/xlsx/students?date=${d}`);
+  setExportLink('exp-pdf-t-main', `${main}/pdf/teachers?date=${d}`);
+  setExportLink('exp-pdf-s-main', `${main}/pdf/students?date=${d}`);
+  setExportLink('exp-png-t-main', `${main}/png/teachers?date=${d}`);
+  setExportLink('exp-png-s-main', `${main}/png/students?date=${d}`);
+
   const d1 = document.getElementById('prikaz-from')?.value;
   const d2 = document.getElementById('prikaz-to')?.value;
   const od = document.getElementById('prikaz-order-date')?.value;
@@ -113,8 +138,9 @@ function rebuildLessonSelect(selectEl, shift, currentVal) {
   else selectEl.value = String(opts[0]);
 }
 
-function addRow(data) {
-  const tbody = document.getElementById('changes-body');
+function addRow(tbodyId, data) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
   const tr = document.createElement('tr');
   const klass = (data && data.klass) || '';
   const shift = data && data.class_id
@@ -144,28 +170,26 @@ function addRow(data) {
   tr.querySelector('.inp-room').value = (data && data.room) || '';
   tr.querySelector('.inp-note').value = (data && data.note) || '';
 
-  inpKlass.addEventListener('change', () => {
+  const onKlassChange = () => {
     const sh = shiftForClassName(inpKlass.value);
     rebuildLessonSelect(selLesson, sh, selLesson.value);
-  });
-  inpKlass.addEventListener('blur', () => {
-    const sh = shiftForClassName(inpKlass.value);
-    rebuildLessonSelect(selLesson, sh, selLesson.value);
-  });
+  };
+  inpKlass.addEventListener('change', onKlassChange);
+  inpKlass.addEventListener('blur', onKlassChange);
 
   tr.querySelector('.btn-icon').addEventListener('click', () => tr.remove());
 }
 
-function collectRows() {
+function collectRowsFromTbody(tbodyId) {
   const rows = [];
-  document.querySelectorAll('#changes-body tr').forEach((tr) => {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return rows;
+  tbody.querySelectorAll('tr').forEach((tr) => {
     const klass = tr.querySelector('.inp-klass').value.trim();
     if (!klass) return;
-    const name = klass;
-    const cls = reference.classes.find((c) => c.name.toLowerCase() === name.toLowerCase());
-    const class_id = cls ? cls.id : null;
+    const cls = reference.classes.find((c) => c.name.toLowerCase() === klass.toLowerCase());
     rows.push({
-      class_id,
+      class_id: cls ? cls.id : null,
       klass,
       lesson_no: parseInt(tr.querySelector('.inp-lesson').value, 10),
       absent_fio: tr.querySelector('.inp-absent').value.trim(),
@@ -178,6 +202,21 @@ function collectRows() {
   return rows;
 }
 
+function collectRows() {
+  return [
+    ...collectRowsFromTbody('changes-body-elementary'),
+    ...collectRowsFromTbody('changes-body-main'),
+  ];
+}
+
+function fillTable(tbodyId, rows) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (rows.length === 0) addRow(tbodyId, null);
+  else rows.forEach((r) => addRow(tbodyId, r));
+}
+
 async function loadDay() {
   const d = currentDate();
   let rows = [];
@@ -187,9 +226,10 @@ async function loadDay() {
   } catch (e) {
     console.warn(e);
   }
-  document.getElementById('changes-body').innerHTML = '';
-  if (rows.length === 0) addRow(null);
-  else rows.forEach((r) => addRow(r));
+  const elem = rows.filter((r) => isElementaryClass(r.klass));
+  const main = rows.filter((r) => !isElementaryClass(r.klass));
+  fillTable('changes-body-elementary', elem);
+  fillTable('changes-body-main', main);
   syncPrikazDatesFromChangeDate();
   updateExportLinks();
 }
@@ -206,16 +246,29 @@ async function init() {
       updateExportLinks();
     });
   });
-  document.getElementById('btn-add-row').addEventListener('click', () => addRow(null));
+  document.getElementById('btn-add-row-elementary').addEventListener('click', () => {
+    addRow('changes-body-elementary', null);
+  });
+  document.getElementById('btn-add-row-main').addEventListener('click', () => {
+    addRow('changes-body-main', null);
+  });
   document.getElementById('btn-save').addEventListener('click', async () => {
     try {
       const rows = collectRows();
-      await api('/api/changes', {
+      const res = await api('/api/changes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: currentDate(), rows }),
       });
-      alert('Сохранено');
+      reference = await api('/api/reference');
+      fillDatalists();
+      const rem = res.remembered || {};
+      const parts = [];
+      if (rem.teachers) parts.push(`учителей: ${rem.teachers}`);
+      if (rem.subjects) parts.push(`предметов: ${rem.subjects}`);
+      if (rem.classes) parts.push(`классов: ${rem.classes}`);
+      const extra = parts.length ? `\nВ справочник добавлено — ${parts.join(', ')}.` : '';
+      alert(`Сохранено (${res.count} строк).${extra}`);
       updateExportLinks();
     } catch (e) {
       alert('Ошибка: ' + e.message);

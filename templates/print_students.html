@@ -9,7 +9,7 @@
   <div id="print-area" class="print-sheet print-students">
     <div class="print-head">
       <div class="print-head-left">
-        <div class="print-badge">Для обучающихся</div>
+        <div class="print-badge">{{ print_badge | default('Основная школа (5–11) · Для обучающихся') }}</div>
         <h1 class="print-title">Изменения в расписании</h1>
         <p class="print-subtitle">{{ date_display }}</p>
       </div>

@@ -5,22 +5,21 @@
   <title>{{ print_badge }} — {{ date_display }}</title>
   <link rel="stylesheet" href="{{ css_url }}">
 </head>
-<body class="page-print print-teachers">
-  <div id="print-area" class="print-sheet">
+<body class="page-print print-students print-elementary">
+  <div id="print-area" class="print-sheet print-students">
     <div class="print-head">
       <div class="print-head-left">
-        <div class="print-badge">{{ print_badge }}</div>
+        <div class="print-badge print-badge-elementary">{{ print_badge }}</div>
         <h1 class="print-title">Изменения в расписании</h1>
         <p class="print-subtitle">{{ date_display }}</p>
       </div>
     </div>
-    <table class="print-table print-table-teachers">
+    <table class="print-table print-table-students">
       <thead>
         <tr>
           <th>Класс</th>
           <th>№ урока</th>
-          <th>Отсутствующий учитель</th>
-          <th>Заменяющий учитель</th>
+          <th>Урок</th>
           <th>Кабинет</th>
           <th>Примечание</th>
         </tr>
@@ -30,13 +29,12 @@
         <tr>
           <td>{{ row.klass }}</td>
           <td class="num">{{ row.lesson_no }}</td>
-          <td>{{ row.absent_fio }}</td>
-          <td>{{ row.replacement_fio or "—" }}</td>
-          <td>{{ row.room or "—" }}</td>
+          <td>{{ row.subject }}</td>
+          <td>{{ row.room }}</td>
           <td>{{ row.note }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="empty">Нет данных на этот день</td></tr>
+        <tr><td colspan="5" class="empty">Нет изменений для отображения</td></tr>
         {% endfor %}
       </tbody>
     </table>

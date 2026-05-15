@@ -26,17 +26,19 @@
       </label>
       <div class="actions">
         <button type="button" id="btn-save" class="btn primary">Сохранить</button>
-        <button type="button" id="btn-add-row" class="btn">+ Строка</button>
       </div>
     </div>
-    <p class="hint">№ урока: <strong>0–7</strong> для 1 смены, <strong>−1–6</strong> для 2 смены (по справочнику класса).</p>
-    <p class="hint">Подсказки по классам, учителям и предметам берутся из справочников (загружаются один раз и хранятся в базе).</p>
+    <p class="hint">Классы <strong>1–4</strong> — начальная школа; <strong>5–11</strong> — основная. Новые учителя и предметы сохраняются в справочник при нажатии «Сохранить».</p>
+    <p class="hint">№ урока: <strong>0–7</strong> (1 смена), <strong>−1–6</strong> (2 смена) — по справочнику класса.</p>
   </section>
 
-  <section class="card">
-    <h2>Таблица изменений</h2>
+  <section class="card school-section school-section-elementary">
+    <div class="school-section-head">
+      <h2>Начальная школа (1–4 класс)</h2>
+      <button type="button" class="btn" id="btn-add-row-elementary">+ Строка</button>
+    </div>
     <div class="table-wrap">
-      <table class="edit-table" id="changes-table">
+      <table class="edit-table">
         <thead>
           <tr>
             <th>Класс</th>
@@ -49,22 +51,58 @@
             <th></th>
           </tr>
         </thead>
-        <tbody id="changes-body"></tbody>
+        <tbody id="changes-body-elementary"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card school-section school-section-main">
+    <div class="school-section-head">
+      <h2>Основная школа (5–11 класс)</h2>
+      <button type="button" class="btn" id="btn-add-row-main">+ Строка</button>
+    </div>
+    <div class="table-wrap">
+      <table class="edit-table">
+        <thead>
+          <tr>
+            <th>Класс</th>
+            <th>№ урока</th>
+            <th>Отсутствующий учитель</th>
+            <th>Заменяющий учитель</th>
+            <th>Предмет (для учеников)</th>
+            <th>Кабинет</th>
+            <th>Примечание</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="changes-body-main"></tbody>
       </table>
     </div>
   </section>
 
   <section class="card">
     <h2>Экспорт</h2>
+    <p class="hint export-hint">Сначала сохраните день. Отдельные файлы для начальной и основной школы.</p>
+
+    <h3 class="export-sub">Начальная школа (1–4)</h3>
     <div class="export-grid">
-      <a class="btn primary" id="exp-xlsx-t" href="#" target="_blank">Excel — учителя</a>
-      <a class="btn primary" id="exp-xlsx-s" href="#" target="_blank">Excel — ученики</a>
-      <a class="btn" id="exp-pdf-t" href="#" target="_blank">PDF — учителя</a>
-      <a class="btn" id="exp-pdf-s" href="#" target="_blank">PDF — ученики</a>
-      <a class="btn" id="exp-png-t" href="#" target="_blank">PNG — учителя</a>
-      <a class="btn" id="exp-png-s" href="#" target="_blank">PNG — ученики</a>
+      <a class="btn primary" id="exp-xlsx-t-elem" href="#" target="_blank">Excel — учителя</a>
+      <a class="btn primary" id="exp-xlsx-s-elem" href="#" target="_blank">Excel — ученики</a>
+      <a class="btn" id="exp-pdf-t-elem" href="#" target="_blank">PDF — учителя</a>
+      <a class="btn" id="exp-pdf-s-elem" href="#" target="_blank">PDF — ученики</a>
+      <a class="btn" id="exp-png-t-elem" href="#" target="_blank">PNG — учителя</a>
+      <a class="btn" id="exp-png-s-elem" href="#" target="_blank">PNG — ученики</a>
     </div>
-    <p class="hint">Сначала сохраните день. При первом запуске exe нужен интернет для загрузки Chromium (PDF/PNG); Excel работает сразу.</p>
+
+    <h3 class="export-sub">Основная школа (5–11)</h3>
+    <div class="export-grid">
+      <a class="btn primary" id="exp-xlsx-t-main" href="#" target="_blank">Excel — учителя</a>
+      <a class="btn primary" id="exp-xlsx-s-main" href="#" target="_blank">Excel — ученики</a>
+      <a class="btn" id="exp-pdf-t-main" href="#" target="_blank">PDF — учителя</a>
+      <a class="btn" id="exp-pdf-s-main" href="#" target="_blank">PDF — ученики</a>
+      <a class="btn" id="exp-png-t-main" href="#" target="_blank">PNG — учителя</a>
+      <a class="btn" id="exp-png-s-main" href="#" target="_blank">PNG — ученики</a>
+    </div>
 
     <h3 class="export-sub">Приказ об оплате часов (шаблон школы)</h3>
     <div class="date-bar prikaz-row">

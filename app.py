@@ -30,8 +30,10 @@ from flask import (
 
 from core import db
 from core.export_data import (
+    build_elementary_student_rows,
     build_student_rows,
     build_teacher_rows,
+    changes_for_level,
     validate_lesson,
     xlsx_rows,
 )
@@ -377,82 +379,164 @@ def create_app() -> Flask:
         _validate_rows(rows)
         day_id = db.get_or_create_day(d)
         db.replace_changes_for_day(day_id, rows)
-        return jsonify({"ok": True, "date": d, "count": len(rows)})
+        remembered = db.remember_from_change_rows(rows)
+        return jsonify(
+            {"ok": True, "date": d, "count": len(rows), "remembered": remembered}
+        )
 
     def _changes_for_date(d: str) -> list[dict[str, Any]]:
-        rows = db.load_changes_for_day(d)
-        return rows
+        return db.load_changes_for_day(d)
 
-    @app.get("/print/teachers")
-    def print_teachers() -> str:
+    def _export_date() -> str:
         d = request.args.get("date") or db.today_iso()
         date.fromisoformat(d)
-        rows = build_teacher_rows(_changes_for_date(d))
+        return d
+
+    _LEVEL_BADGE = {
+        ("teachers", "elementary"): "Начальная школа (1–4) · Для учителей",
+        ("teachers", "main"): "Основная школа (5–11) · Для учителей",
+        ("students", "elementary"): "Начальная школа (1–4) · Для обучающихся",
+        ("students", "main"): "Основная школа (5–11) · Для обучающихся",
+    }
+
+    def _level_tag(level: str) -> str:
+        return "нач_школа" if level == "elementary" else "основная"
+
+    def _export_error_response(exc: BaseException) -> Response:
+        return Response(str(exc), status=503, mimetype="text/plain; charset=utf-8")
+
+    def _xlsx_mimetype() -> str:
+        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    @app.get("/print/teachers/elementary")
+    def print_teachers_elementary() -> str:
+        d = _export_date()
+        raw = changes_for_level(_changes_for_date(d), "elementary")
         return render_template(
             "print_teachers.html",
             date_display=format_date_ru(d),
-            rows=rows,
+            rows=build_teacher_rows(raw),
+            print_badge=_LEVEL_BADGE[("teachers", "elementary")],
+            css_url=_css_url(),
+        )
+
+    @app.get("/print/teachers")
+    def print_teachers() -> str:
+        d = _export_date()
+        raw = changes_for_level(_changes_for_date(d), "main")
+        return render_template(
+            "print_teachers.html",
+            date_display=format_date_ru(d),
+            rows=build_teacher_rows(raw),
+            print_badge=_LEVEL_BADGE[("teachers", "main")],
+            css_url=_css_url(),
+        )
+
+    @app.get("/print/students/elementary")
+    def print_students_elementary() -> str:
+        d = _export_date()
+        raw = changes_for_level(_changes_for_date(d), "elementary")
+        return render_template(
+            "print_students_elementary.html",
+            date_display=format_date_ru(d),
+            rows=build_elementary_student_rows(raw),
+            print_badge=_LEVEL_BADGE[("students", "elementary")],
             css_url=_css_url(),
         )
 
     @app.get("/print/students")
     def print_students() -> str:
-        d = request.args.get("date") or db.today_iso()
-        date.fromisoformat(d)
-        s1, s2 = build_student_rows(_changes_for_date(d))
+        d = _export_date()
+        raw = changes_for_level(_changes_for_date(d), "main")
+        s1, s2 = build_student_rows(raw)
         return render_template(
             "print_students.html",
             date_display=format_date_ru(d),
             rows_shift1=s1,
             rows_shift2=s2,
+            print_badge=_LEVEL_BADGE[("students", "main")],
             css_url=_css_url(),
         )
 
-    def _export_error_response(exc: BaseException) -> Response:
-        return Response(str(exc), status=503, mimetype="text/plain; charset=utf-8")
+    @app.get("/export/xlsx/teachers/elementary")
+    def export_xlsx_teachers_elementary() -> Any:
+        d = _export_date()
+        raw = changes_for_level(_changes_for_date(d), "elementary")
+        rows = build_teacher_rows(raw)
+        badge = _LEVEL_BADGE[("teachers", "elementary")]
+        data = gen_xlsx.build_teachers_print_workbook(
+            format_date_ru(d), rows, badge=badge, sheet_title="Нач. школа"
+        )
+        tag = _level_tag("elementary")
+        return send_file(
+            io.BytesIO(data),
+            mimetype=_xlsx_mimetype(),
+            as_attachment=True,
+            download_name=f"замещение_учителей_{tag}_{d}.xlsx",
+        )
 
     @app.get("/export/xlsx/teachers")
     def export_xlsx_teachers() -> Any:
-        d = request.args.get("date") or db.today_iso()
-        date.fromisoformat(d)
-        rows = build_teacher_rows(_changes_for_date(d))
-        data = gen_xlsx.build_teachers_print_workbook(format_date_ru(d), rows)
+        d = _export_date()
+        raw = changes_for_level(_changes_for_date(d), "main")
+        rows = build_teacher_rows(raw)
+        badge = _LEVEL_BADGE[("teachers", "main")]
+        data = gen_xlsx.build_teachers_print_workbook(
+            format_date_ru(d), rows, badge=badge, sheet_title="Основная"
+        )
+        tag = _level_tag("main")
         return send_file(
             io.BytesIO(data),
-            mimetype=(
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            ),
+            mimetype=_xlsx_mimetype(),
             as_attachment=True,
-            download_name=f"замещение_учителей_{d}.xlsx",
+            download_name=f"замещение_учителей_{tag}_{d}.xlsx",
+        )
+
+    @app.get("/export/xlsx/students/elementary")
+    def export_xlsx_students_elementary() -> Any:
+        d = _export_date()
+        raw = changes_for_level(_changes_for_date(d), "elementary")
+        rows = build_elementary_student_rows(raw)
+        data = gen_xlsx.build_elementary_students_print_workbook(
+            format_date_ru(d), rows
+        )
+        tag = _level_tag("elementary")
+        return send_file(
+            io.BytesIO(data),
+            mimetype=_xlsx_mimetype(),
+            as_attachment=True,
+            download_name=f"изменения_ученики_{tag}_{d}.xlsx",
         )
 
     @app.get("/export/xlsx/students")
     def export_xlsx_students() -> Any:
-        d = request.args.get("date") or db.today_iso()
-        date.fromisoformat(d)
-        s1, s2 = build_student_rows(_changes_for_date(d))
-        data = gen_xlsx.build_students_print_workbook(format_date_ru(d), s1, s2)
+        d = _export_date()
+        raw = changes_for_level(_changes_for_date(d), "main")
+        s1, s2 = build_student_rows(raw)
+        badge = _LEVEL_BADGE[("students", "main")]
+        data = gen_xlsx.build_students_print_workbook(
+            format_date_ru(d), s1, s2, badge=badge, sheet_title="Основная"
+        )
+        tag = _level_tag("main")
         return send_file(
             io.BytesIO(data),
-            mimetype=(
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            ),
+            mimetype=_xlsx_mimetype(),
             as_attachment=True,
-            download_name=f"изменения_ученики_{d}.xlsx",
+            download_name=f"изменения_ученики_{tag}_{d}.xlsx",
         )
 
-    @app.get("/export/pdf/teachers")
-    def export_pdf_teachers() -> Any:
-        d = request.args.get("date") or db.today_iso()
-        date.fromisoformat(d)
-        rows = build_teacher_rows(_changes_for_date(d))
+    def _export_pdf_teachers(level: str, print_endpoint: str, d: str) -> Any:
+        raw = changes_for_level(_changes_for_date(d), level)
+        rows = build_teacher_rows(raw)
+        badge = _LEVEL_BADGE[("teachers", level)]
         ctx = {
             "date_display": format_date_ru(d),
             "rows": rows,
+            "print_badge": badge,
             "css_url": _css_url(),
         }
         base = request.host_url.rstrip("/")
-        fb = f"{base}{url_for('print_teachers')}?date={d}"
+        fb = f"{base}{url_for(print_endpoint)}?date={d}"
         try:
             data = gen_pdf.render_pdf_bytes(
                 app,
@@ -464,30 +548,53 @@ def create_app() -> Flask:
             )
         except Exception as e:
             return _export_error_response(e)
+        tag = _level_tag(level)
         return send_file(
             io.BytesIO(data),
             mimetype="application/pdf",
             as_attachment=True,
-            download_name=f"замещение_учителей_{d}.pdf",
+            download_name=f"замещение_учителей_{tag}_{d}.pdf",
         )
 
-    @app.get("/export/pdf/students")
-    def export_pdf_students() -> Any:
-        d = request.args.get("date") or db.today_iso()
-        date.fromisoformat(d)
-        s1, s2 = build_student_rows(_changes_for_date(d))
-        ctx = {
-            "date_display": format_date_ru(d),
-            "rows_shift1": s1,
-            "rows_shift2": s2,
-            "css_url": _css_url(),
-        }
+    @app.get("/export/pdf/teachers/elementary")
+    def export_pdf_teachers_elementary() -> Any:
+        d = _export_date()
+        return _export_pdf_teachers(
+            "elementary", "print_teachers_elementary", d
+        )
+
+    @app.get("/export/pdf/teachers")
+    def export_pdf_teachers() -> Any:
+        d = _export_date()
+        return _export_pdf_teachers("main", "print_teachers", d)
+
+    def _export_pdf_students(level: str, print_endpoint: str, d: str) -> Any:
+        raw = changes_for_level(_changes_for_date(d), level)
+        badge = _LEVEL_BADGE[("students", level)]
+        if level == "elementary":
+            ctx = {
+                "date_display": format_date_ru(d),
+                "rows": build_elementary_student_rows(raw),
+                "print_badge": badge,
+                "css_url": _css_url(),
+            }
+            template = "print_students_elementary.html"
+        else:
+            s1, s2 = build_student_rows(raw)
+            ctx = {
+                "date_display": format_date_ru(d),
+                "rows_shift1": s1,
+                "rows_shift2": s2,
+                "print_badge": badge,
+                "css_url": _css_url(),
+            }
+            template = "print_students.html"
         base = request.host_url.rstrip("/")
-        fb = f"{base}{url_for('print_students')}?date={d}"
+        fb = f"{base}{url_for(print_endpoint)}?date={d}"
         try:
             data = gen_pdf.render_pdf_bytes(
                 app,
-                "print_students.html",
+                template,
                 ctx,
                 fallback_url=fb,
                 fallback_landscape=False,
@@ -495,46 +602,64 @@ def create_app() -> Flask:
             )
         except Exception as e:
             return _export_error_response(e)
+        tag = _level_tag(level)
         return send_file(
             io.BytesIO(data),
             mimetype="application/pdf",
             as_attachment=True,
-            download_name=f"изменения_ученики_{d}.pdf",
+            download_name=f"изменения_ученики_{tag}_{d}.pdf",
         )
+
+    @app.get("/export/pdf/students/elementary")
+    def export_pdf_students_elementary() -> Any:
+        d = _export_date()
+        return _export_pdf_students(
+            "elementary", "print_students_elementary", d
+        )
+
+    @app.get("/export/pdf/students")
+    def export_pdf_students() -> Any:
+        d = _export_date()
+        return _export_pdf_students("main", "print_students", d)
+
+    def _export_png(print_endpoint: str, d: str, kind: str, level: str) -> Any:
+        base = request.host_url.rstrip("/")
+        url = f"{base}{url_for(print_endpoint)}?date={d}"
+        try:
+            png = gen_png.screenshot_element(url)
+        except Exception as e:
+            return _export_error_response(e)
+        tag = _level_tag(level)
+        if kind == "teachers":
+            name = f"замещение_учителей_{tag}_{d}.png"
+        else:
+            name = f"изменения_ученики_{tag}_{d}.png"
+        return send_file(
+            io.BytesIO(png),
+            mimetype="image/png",
+            as_attachment=True,
+            download_name=name,
+        )
+
+    @app.get("/export/png/teachers/elementary")
+    def export_png_teachers_elementary() -> Any:
+        d = _export_date()
+        return _export_png("print_teachers_elementary", d, "teachers", "elementary")
 
     @app.get("/export/png/teachers")
     def export_png_teachers() -> Any:
-        d = request.args.get("date") or db.today_iso()
-        date.fromisoformat(d)
-        base = request.host_url.rstrip("/")
-        url = f"{base}{url_for('print_teachers')}?date={d}"
-        try:
-            png = gen_png.screenshot_element(url)
-        except Exception as e:
-            return _export_error_response(e)
-        return send_file(
-            io.BytesIO(png),
-            mimetype="image/png",
-            as_attachment=True,
-            download_name=f"замещение_учителей_{d}.png",
-        )
+        d = _export_date()
+        return _export_png("print_teachers", d, "teachers", "main")
+
+    @app.get("/export/png/students/elementary")
+    def export_png_students_elementary() -> Any:
+        d = _export_date()
+        return _export_png("print_students_elementary", d, "students", "elementary")
 
     @app.get("/export/png/students")
     def export_png_students() -> Any:
-        d = request.args.get("date") or db.today_iso()
-        date.fromisoformat(d)
-        base = request.host_url.rstrip("/")
-        url = f"{base}{url_for('print_students')}?date={d}"
-        try:
-            png = gen_png.screenshot_element(url)
-        except Exception as e:
-            return _export_error_response(e)
-        return send_file(
-            io.BytesIO(png),
-            mimetype="image/png",
-            as_attachment=True,
-            download_name=f"изменения_ученики_{d}.png",
-        )
+        d = _export_date()
+        return _export_png("print_students", d, "students", "main")
 
     @app.get("/export/xlsx/prikaz")
     def export_xlsx_prikaz() -> Any:

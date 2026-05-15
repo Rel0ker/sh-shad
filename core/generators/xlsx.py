@@ -62,6 +62,43 @@ def _write_data_rows(
     return start_row + len(rows) - 1 if rows else start_row
 
 
+def build_elementary_students_print_workbook(
+    date_display: str,
+    rows: list[dict[str, Any]],
+) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Нач. школа"
+
+    _sheet_title_block(
+        ws,
+        "Изменения в расписании",
+        date_display,
+        "Начальная школа (1–4) · Для обучающихся",
+    )
+
+    headers = [
+        ("klass", "Класс"),
+        ("lesson_no", "№ урока"),
+        ("subject", "Урок"),
+        ("room", "Кабинет"),
+        ("note", "Примечание"),
+    ]
+    hr = 5
+    for col, (_, label) in enumerate(headers, start=1):
+        ws.cell(row=hr, column=col, value=label)
+    _style_header_row(ws, hr, len(headers))
+    _write_data_rows(ws, hr + 1, rows, headers, empty_text="Нет изменений")
+
+    widths = (12, 10, 36, 14, 24)
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def _sheet_title_block(ws, title: str, subtitle: str, badge: str) -> int:
     ws.merge_cells("A1:F1")
     ws["A1"] = badge
@@ -78,16 +115,19 @@ def _sheet_title_block(ws, title: str, subtitle: str, badge: str) -> int:
 def build_teachers_print_workbook(
     date_display: str,
     rows: list[dict[str, Any]],
+    *,
+    badge: str = "Для учителей",
+    sheet_title: str = "Учителя",
 ) -> bytes:
     wb = Workbook()
     ws = wb.active
-    ws.title = "Учителя"
+    ws.title = sheet_title[:31]
 
     _sheet_title_block(
         ws,
         "Изменения в расписании",
         date_display,
-        "Для учителей",
+        badge,
     )
 
     headers = [
@@ -121,16 +161,19 @@ def build_students_print_workbook(
     date_display: str,
     rows_shift1: list[dict[str, Any]],
     rows_shift2: list[dict[str, Any]],
+    *,
+    badge: str = "Для обучающихся",
+    sheet_title: str = "Ученики",
 ) -> bytes:
     wb = Workbook()
     ws = wb.active
-    ws.title = "Ученики"
+    ws.title = sheet_title[:31]
 
     _sheet_title_block(
         ws,
         "Изменения в расписании",
         date_display,
-        "Для обучающихся",
+        badge,
     )
 
     headers = [

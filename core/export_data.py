@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from core import db
+from core.class_levels import is_elementary_class, split_changes_by_level
 
 
 def _shift_for_row(r: dict[str, Any]) -> int:
@@ -77,6 +78,36 @@ def build_student_rows(changes: list[dict[str, Any]]) -> tuple[list[dict], list[
     s1.sort(key=lambda x: (int(x["lesson_no"]), x["klass"].lower()))
     s2.sort(key=lambda x: (int(x["lesson_no"]), x["klass"].lower()))
     return s1, s2
+
+
+def build_elementary_student_rows(changes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Начальная школа: одна таблица без деления на смены."""
+    rows: list[dict[str, Any]] = []
+    for r in changes:
+        subj = (r.get("subject") or "").strip()
+        room = (r.get("room") or "").strip()
+        if not subj and not room:
+            continue
+        rows.append(
+            {
+                "klass": r.get("klass") or "",
+                "lesson_no": r.get("lesson_no"),
+                "subject": subj or "—",
+                "room": room or "—",
+                "note": r.get("note") or "",
+            }
+        )
+    rows.sort(key=lambda x: (int(x["lesson_no"]), x["klass"].lower()))
+    return rows
+
+
+def changes_for_level(
+    changes: list[dict[str, Any]], level: str
+) -> list[dict[str, Any]]:
+    elementary, main = split_changes_by_level(changes)
+    if level == "elementary":
+        return elementary
+    return main
 
 
 def xlsx_rows(changes: list[dict[str, Any]], date_iso: str) -> list[dict[str, Any]]:

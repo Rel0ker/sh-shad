@@ -180,6 +180,39 @@ body {
   font-weight: 700;
 }
 
+.export-hint {
+  margin-bottom: 0.75rem;
+}
+
+.school-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.school-section-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.school-section-elementary {
+  border-color: #c5e8d4;
+  background: linear-gradient(180deg, #f8fffb 0%, #ffffffdb 100%);
+}
+
+.school-section-main {
+  border-color: #c9daf5;
+}
+
+.print-badge-elementary {
+  background: #e8f8ee;
+  border-color: #9fd4b0;
+  color: #1a5c32;
+}
+
 .prikaz-row {
   margin-top: 0.5rem;
   align-items: flex-end;
