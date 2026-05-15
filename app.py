@@ -605,6 +605,9 @@ def _find_free_port(start: int = 8765, attempts: int = 40) -> int:
 
 def main() -> None:
     os.environ.setdefault("FLASK_ENV", "development")
+    from core.playwright_bundle import ensure_chromium_at_startup
+
+    ensure_chromium_at_startup()
     app = create_app()
     port = int(os.environ.get("PORT", "0")) or _find_free_port()
 

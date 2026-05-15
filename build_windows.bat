@@ -8,7 +8,7 @@ if not defined PY_CMD (
   where python >nul 2>&1 && set "PY_CMD=python"
 )
 if not defined PY_CMD (
-  echo [Ошибка] Не найден Python 3.11+. Установите с python.org, включите PATH.
+  echo [Ошибка] Нужен Python 3.11+ с python.org
   exit /b 1
 )
 
@@ -19,20 +19,15 @@ if not exist "%VENV_PY%" (
   if errorlevel 1 exit /b 1
 )
 
-echo Установка основных зависимостей ^(Flask, openpyxl^)...
+echo Установка зависимостей...
 "%VENV_PY%" -m pip install --upgrade pip
-if errorlevel 1 exit /b 1
 "%VENV_PY%" -m pip install -r "%~dp0requirements.txt"
 if errorlevel 1 exit /b 1
 
 echo.
-echo Playwright для PDF/PNG — по желанию. Запустите install_playwright_windows.bat после сборки.
-echo Сборка exe не требует Chromium.
+echo Сборка одного файла schedule_changes.exe ...
+echo Chromium на школьных ПК скачается сам при первом запуске ^(интернет^).
 echo.
-
-echo PyInstaller...
-"%VENV_PY%" -m pip install pyinstaller>=6.3.0
-if errorlevel 1 exit /b 1
 "%VENV_PY%" -m PyInstaller "%~dp0build.spec" --noconfirm
 if errorlevel 1 (
   echo [Ошибка] Сборка не удалась.
@@ -40,8 +35,13 @@ if errorlevel 1 (
 )
 
 echo.
-echo Готово: %~dp0dist\schedule_changes.exe
-echo Excel-экспорт работает сразу. Для PDF/PNG на этом ПК: install_playwright_windows.bat
+echo ========================================
+echo Готово — отправляйте ОДИН файл:
+echo   %~dp0dist\schedule_changes.exe
+echo.
+echo При первом запуске на ПК: интернет, загрузка Chromium ~150 МБ.
+echo Дальше — без интернета. База app.db — рядом с exe.
+echo ========================================
 echo.
 pause
 endlocal

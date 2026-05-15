@@ -1,24 +1,33 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""Сборка: pyinstaller build.spec (из корня проекта)."""
+"""Один файл: pyinstaller build.spec → dist/schedule_changes.exe"""
 
 from pathlib import Path
+
+from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
 root = Path(SPECPATH).resolve()
 
+pw_datas, pw_binaries, pw_hiddenimports = collect_all("playwright")
+
 a = Analysis(
     [str(root / "app.py")],
     pathex=[str(root)],
-    binaries=[],
+    binaries=pw_binaries,
     datas=[
         (str(root / "templates"), "templates"),
         (str(root / "static"), "static"),
         (str(root / "data"), "data"),
+    ]
+    + pw_datas,
+    hiddenimports=list(pw_hiddenimports)
+    + [
+        "playwright.sync_api",
+        "playwright._impl._driver",
     ],
-    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=[str(root / "rthook_playwright.py")],
     excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
